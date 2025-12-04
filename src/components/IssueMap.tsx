@@ -1,15 +1,9 @@
-import { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Issue, CATEGORY_CONFIG, STATUS_CONFIG } from '@/types/issue';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { ThumbsUp, ExternalLink } from 'lucide-react';
-import { useIssues } from '@/contexts/IssueContext';
-import { Link } from 'react-router-dom';
 
-// Fix for default marker icons in React-Leaflet
+// Fix for default marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -55,23 +49,6 @@ const createCustomIcon = (status: Issue['status']) => {
   });
 };
 
-interface MapControllerProps {
-  center?: [number, number];
-  zoom?: number;
-}
-
-const MapController = ({ center, zoom }: MapControllerProps) => {
-  const map = useMap();
-  
-  useEffect(() => {
-    if (center) {
-      map.setView(center, zoom || map.getZoom());
-    }
-  }, [center, zoom, map]);
-  
-  return null;
-};
-
 interface IssueMapProps {
   issues: Issue[];
   center?: [number, number];
@@ -86,71 +63,93 @@ const IssueMap = ({
   center = [40.7128, -74.006],
   zoom = 12,
   height = '500px',
-  selectedIssueId,
   onIssueSelect,
 }: IssueMapProps) => {
-  const { upvoteIssue } = useIssues();
-  const mapRef = useRef<L.Map>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<L.Marker[]>([]);
+  const [isReady, setIsReady] = useState(false);
+
+  // Initialize map
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const map = L.map(mapContainerRef.current).setView(center, zoom);
+    
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    }).addTo(map);
+
+    mapRef.current = map;
+    setIsReady(true);
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  // Update center and zoom
+  useEffect(() => {
+    if (mapRef.current) {
+      mapRef.current.setView(center, zoom);
+    }
+  }, [center, zoom]);
+
+  // Update markers
+  useEffect(() => {
+    if (!mapRef.current || !isReady) return;
+
+    // Clear existing markers
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = [];
+
+    // Add new markers
+    issues.forEach((issue) => {
+      const marker = L.marker([issue.location.lat, issue.location.lng], {
+        icon: createCustomIcon(issue.status),
+      });
+
+      const popupContent = `
+        <div style="min-width: 200px; font-family: system-ui, sans-serif;">
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <span style="
+              background-color: ${
+                issue.status === 'reported' ? '#ef4444' : 
+                issue.status === 'in-progress' ? '#eab308' : '#22c55e'
+              };
+              color: ${issue.status === 'in-progress' ? 'black' : 'white'};
+              padding: 2px 8px;
+              border-radius: 9999px;
+              font-size: 12px;
+              font-weight: 600;
+            ">${STATUS_CONFIG[issue.status].label}</span>
+            <span style="font-size: 14px;">${CATEGORY_CONFIG[issue.category].icon}</span>
+          </div>
+          <h4 style="font-weight: 600; font-size: 14px; margin: 0 0 4px 0;">${issue.title}</h4>
+          <p style="font-size: 12px; color: #666; margin: 0 0 8px 0; line-height: 1.4;">
+            ${issue.description.substring(0, 100)}${issue.description.length > 100 ? '...' : ''}
+          </p>
+          <div style="display: flex; align-items: center; gap: 4px; font-size: 12px; color: #666;">
+            <span>👍 ${issue.upvotes} upvotes</span>
+          </div>
+        </div>
+      `;
+
+      marker.bindPopup(popupContent);
+      
+      marker.on('click', () => {
+        onIssueSelect?.(issue);
+      });
+
+      marker.addTo(mapRef.current!);
+      markersRef.current.push(marker);
+    });
+  }, [issues, isReady, onIssueSelect]);
 
   return (
     <div className="relative rounded-lg overflow-hidden shadow-card" style={{ height }}>
-      <MapContainer
-        center={center}
-        zoom={zoom}
-        style={{ height: '100%', width: '100%' }}
-        ref={mapRef}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-        />
-        <MapController center={center} zoom={zoom} />
-        
-        {issues.map((issue) => (
-          <Marker
-            key={issue.id}
-            position={[issue.location.lat, issue.location.lng]}
-            icon={createCustomIcon(issue.status)}
-            eventHandlers={{
-              click: () => onIssueSelect?.(issue),
-            }}
-          >
-            <Popup>
-              <div className="min-w-[250px]">
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge variant={issue.status as 'reported' | 'in-progress' | 'resolved'}>
-                    {STATUS_CONFIG[issue.status].label}
-                  </Badge>
-                  <span className="text-sm">{CATEGORY_CONFIG[issue.category].icon}</span>
-                </div>
-                
-                <h4 className="font-semibold text-sm mb-1">{issue.title}</h4>
-                <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
-                  {issue.description}
-                </p>
-                
-                <div className="flex items-center justify-between">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => upvoteIssue(issue.id)}
-                    className="h-8 px-2 text-xs"
-                  >
-                    <ThumbsUp className="h-3 w-3 mr-1" />
-                    {issue.upvotes}
-                  </Button>
-                  <Link to={`/issues/${issue.id}`}>
-                    <Button variant="outline" size="sm" className="h-8 px-2 text-xs">
-                      <ExternalLink className="h-3 w-3 mr-1" />
-                      View Details
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+      <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />
 
       {/* Legend */}
       <div className="absolute bottom-4 left-4 bg-card/95 backdrop-blur rounded-lg p-3 shadow-card z-[1000]">
