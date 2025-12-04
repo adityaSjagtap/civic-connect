@@ -1,6 +1,5 @@
 import { useIssues } from '@/contexts/IssueContext';
 import { AlertCircle, Clock, CheckCircle, TrendingUp } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 const StatsBar = () => {
   const { issues } = useIssues();
@@ -38,12 +37,9 @@ const StatsBar = () => {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {stats.map((stat, index) => (
-        <motion.div
+      {stats.map((stat) => (
+        <div
           key={stat.label}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.1 }}
           className={`${stat.bgColor} rounded-xl p-4 border border-border/50`}
         >
           <div className="flex items-center gap-3">
@@ -53,7 +49,7 @@ const StatsBar = () => {
               <p className="text-xs text-muted-foreground">{stat.label}</p>
             </div>
           </div>
-        </motion.div>
+        </div>
       ))}
     </div>
   );
