@@ -1,12 +1,24 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { Issue, IssueStatus, IssueCategory } from '@/types/issue';
-import { mockIssues } from '@/data/mockIssues';
+import { db } from '@/lib/firebase';
+import { 
+  collection, 
+  addDoc, 
+  updateDoc, 
+  doc, 
+  onSnapshot, 
+  query, 
+  orderBy,
+  Timestamp,
+  increment
+} from 'firebase/firestore';
 
 interface IssueContextType {
   issues: Issue[];
-  addIssue: (issue: Omit<Issue, 'id' | 'upvotes' | 'reportedAt' | 'updatedAt'>) => void;
-  updateIssueStatus: (id: string, status: IssueStatus, notes?: string) => void;
-  upvoteIssue: (id: string) => void;
+  loading: boolean;
+  addIssue: (issue: Omit<Issue, 'id' | 'upvotes' | 'reportedAt' | 'updatedAt'>) => Promise<void>;
+  updateIssueStatus: (id: string, status: IssueStatus, notes?: string) => Promise<void>;
+  upvoteIssue: (id: string) => Promise<void>;
   getIssueById: (id: string) => Issue | undefined;
   filterByStatus: (status: IssueStatus | 'all') => Issue[];
   filterByCategory: (category: IssueCategory | 'all') => Issue[];
@@ -14,36 +26,72 @@ interface IssueContextType {
 
 const IssueContext = createContext<IssueContextType | undefined>(undefined);
 
+const ISSUES_COLLECTION = 'issues';
+
 export const IssueProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [issues, setIssues] = useState<Issue[]>(mockIssues);
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const addIssue = useCallback((issueData: Omit<Issue, 'id' | 'upvotes' | 'reportedAt' | 'updatedAt'>) => {
-    const newIssue: Issue = {
+  // Subscribe to Firestore issues collection
+  useEffect(() => {
+    const q = query(collection(db, ISSUES_COLLECTION), orderBy('reportedAt', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const issuesData: Issue[] = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          title: data.title,
+          description: data.description,
+          category: data.category,
+          status: data.status,
+          location: data.location,
+          imageUrl: data.imageUrl,
+          upvotes: data.upvotes || 0,
+          reportedBy: data.reportedBy,
+          reportedAt: data.reportedAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date(),
+          assignedTo: data.assignedTo,
+          resolutionNotes: data.resolutionNotes,
+        } as Issue;
+      });
+      setIssues(issuesData);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error fetching issues:', error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const addIssue = useCallback(async (issueData: Omit<Issue, 'id' | 'upvotes' | 'reportedAt' | 'updatedAt'>) => {
+    const now = Timestamp.now();
+    await addDoc(collection(db, ISSUES_COLLECTION), {
       ...issueData,
-      id: Date.now().toString(),
       upvotes: 0,
-      reportedAt: new Date(),
-      updatedAt: new Date(),
+      reportedAt: now,
+      updatedAt: now,
+    });
+  }, []);
+
+  const updateIssueStatus = useCallback(async (id: string, status: IssueStatus, notes?: string) => {
+    const issueRef = doc(db, ISSUES_COLLECTION, id);
+    const updateData: Record<string, unknown> = {
+      status,
+      updatedAt: Timestamp.now(),
     };
-    setIssues(prev => [newIssue, ...prev]);
+    if (notes) {
+      updateData.resolutionNotes = notes;
+    }
+    await updateDoc(issueRef, updateData);
   }, []);
 
-  const updateIssueStatus = useCallback((id: string, status: IssueStatus, notes?: string) => {
-    setIssues(prev =>
-      prev.map(issue =>
-        issue.id === id
-          ? { ...issue, status, updatedAt: new Date(), resolutionNotes: notes || issue.resolutionNotes }
-          : issue
-      )
-    );
-  }, []);
-
-  const upvoteIssue = useCallback((id: string) => {
-    setIssues(prev =>
-      prev.map(issue =>
-        issue.id === id ? { ...issue, upvotes: issue.upvotes + 1 } : issue
-      )
-    );
+  const upvoteIssue = useCallback(async (id: string) => {
+    const issueRef = doc(db, ISSUES_COLLECTION, id);
+    await updateDoc(issueRef, {
+      upvotes: increment(1),
+    });
   }, []);
 
   const getIssueById = useCallback((id: string) => {
@@ -64,6 +112,7 @@ export const IssueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <IssueContext.Provider
       value={{
         issues,
+        loading,
         addIssue,
         updateIssueStatus,
         upvoteIssue,
