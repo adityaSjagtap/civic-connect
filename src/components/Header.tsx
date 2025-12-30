@@ -1,12 +1,14 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { MapPin, Plus, List, LayoutDashboard, Menu, X } from 'lucide-react';
+import { MapPin, Plus, List, LayoutDashboard, Menu, X, LogIn, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Header = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   const navItems = [
     { path: '/', label: 'Map', icon: MapPin },
@@ -16,6 +18,11 @@ const Header = () => {
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleLogout = async () => {
+    await logout();
+    setMobileMenuOpen(false);
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -43,6 +50,20 @@ const Header = () => {
               </Button>
             </Link>
           ))}
+          
+          {user ? (
+            <Button variant="ghost" size="sm" className="gap-2 ml-2" onClick={handleLogout}>
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+          ) : (
+            <Link to="/auth">
+              <Button variant="outline" size="sm" className="gap-2 ml-2">
+                <LogIn className="h-4 w-4" />
+                Sign In
+              </Button>
+            </Link>
+          )}
         </nav>
 
         {/* Mobile Menu Button */}
@@ -81,6 +102,20 @@ const Header = () => {
                   </Button>
                 </Link>
               ))}
+              
+              {user ? (
+                <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </Button>
+              ) : (
+                <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="outline" className="w-full justify-start gap-2">
+                    <LogIn className="h-4 w-4" />
+                    Sign In
+                  </Button>
+                </Link>
+              )}
             </nav>
           </motion.div>
         )}
