@@ -1,0 +1,180 @@
+/* Print Styles for Project Report */
+
+@media print {
+  /* Reset body styles */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt !important;
+    line-height: 1.5 !important;
+  }
+
+  /* Hide non-essential elements */
+  .print\\:hidden,
+  nav,
+  header,
+  footer,
+  button,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4;
+    margin: 2cm 2.5cm;
+  }
+
+  /* First page (cover) */
+  @page :first {
+    margin-top: 0;
+  }
+
+  /* Page breaks */
+  .page-break-before {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  .page-break-after {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Prevent breaks inside elements */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  table, figure, img {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Table styling for print */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  th, td {
+    border: 1px solid #333 !important;
+    padding: 8px !important;
+  }
+
+  th {
+    background-color: #f0f0f0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ensure backgrounds print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Links */
+  a {
+    color: black !important;
+    text-decoration: none !important;
+  }
+
+  a[href^="http"]:after {
+    content: " (" attr(href) ")";
+    font-size: 10pt;
+    color: #666;
+  }
+
+  /* Code blocks */
+  pre, code {
+    font-size: 10pt !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+  }
+
+  /* Report container */
+  .report-container {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .report-container section {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Cover page specific */
+  .report-container section:first-of-type {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* Typography adjustments */
+  h1 {
+    font-size: 24pt !important;
+  }
+
+  h2 {
+    font-size: 18pt !important;
+    margin-top: 24pt !important;
+    margin-bottom: 12pt !important;
+  }
+
+  h3 {
+    font-size: 14pt !important;
+    margin-top: 18pt !important;
+    margin-bottom: 8pt !important;
+  }
+
+  h4 {
+    font-size: 12pt !important;
+    margin-top: 12pt !important;
+    margin-bottom: 6pt !important;
+  }
+
+  p {
+    text-align: justify !important;
+    orphans: 3 !important;
+    widows: 3 !important;
+  }
+
+  /* List styling */
+  ul, ol {
+    margin-left: 20pt !important;
+  }
+
+  li {
+    margin-bottom: 4pt !important;
+  }
+
+  /* Ensure proper spacing */
+  .text-justify {
+    text-align: justify !important;
+  }
+}
+
+/* Screen-only styles for report preview */
+@media screen {
+  .report-container {
+    max-width: 210mm; /* A4 width */
+    margin: 0 auto;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .page-break-after {
+    border-bottom: 2px dashed #ccc;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+  }
+}

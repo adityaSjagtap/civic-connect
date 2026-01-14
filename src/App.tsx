@@ -11,6 +11,8 @@ import Report from "./pages/Report";
 import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import ProjectReport from "./pages/ProjectReport";
+import "@/styles/print.css";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +30,7 @@ const App = () => (
               <Route path="/report" element={<Report />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/project-report" element={<ProjectReport />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
